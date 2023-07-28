@@ -1,0 +1,44 @@
+stages: # grandes étapes
+  - docker-image
+  - heroku-deploy
+
+variables:
+  CONTAINER_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG #le nom du projet (starter)
+
+# ce qu'on va envoyer sur gitlab
+build:
+  image: docker:stable
+  stage: docker-image
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY #Permet d'autolog sur gitlab afin de sauvegarder les conteneurs dessus
+  script:
+    - docker build --build-arg CI_NPM_TOKEN=${NPM_TOKEN} -t $CONTAINER_IMAGE .
+    - docker push $CONTAINER_IMAGE # permet de sauvegardé sur gitlab l'image générée par la commande build
+  #permet de build les branches suivantes
+  only:
+    - main
+    - develop
+    - release/*
+
+heroku:
+  image: docker:stable
+  stage: heroku-deploy
+  environment:
+    name: $CI_COMMIT_REF_SLUG
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u _ -p $HEROKU_TOKEN registry.heroku.com
+
+  script:
+    - docker build --build-arg CI_NPM_TOKEN=${NPM_TOKEN} --iidfile imageid.txt -t registry.heroku.com/$HEROKU_APP_NAME/app .
+    - docker push registry.heroku.com/$HEROKU_APP_NAME/app
+    - apk add --no-cache curl
+    - echo "Docker Image ID is $(cat imageid.txt)"
+    - |-
+      curl -X PATCH https://api.heroku.com/apps/$HEROKU_APP_NAME/formation --header "Content-Type: application/json" --header "Accept: application/vnd.heroku+json; version=3.docker-releases" --header "Authorization: Bearer ${HEROKU_TOKEN}" --data '{ "updates": [ { "type": "web", "docker_image": "'$(cat imageid.txt)'" } ] }'
+  only:
+    - main
+    - develop
