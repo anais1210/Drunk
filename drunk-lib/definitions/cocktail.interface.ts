@@ -1,7 +1,10 @@
+import { ObjectId } from "mongoose";
+
 export interface ICocktail {
-  id: string;
+  id: ObjectId;
   name: string;
   price: number;
-  alcool: string;
+  alcohol: string;
   ingredients: string;
+  description?: string;
 }

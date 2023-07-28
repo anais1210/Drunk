@@ -1,9 +1,14 @@
+import { ObjectId } from "mongoose";
 import { ICocktail } from "./cocktail.interface";
-import { ILocation } from "./location.interface";
+interface ILocation {
+  id: ObjectId;
 
+  lon: string;
+  lat: string;
+}
 export interface IBar {
-  id: string;
+  id: ObjectId;
   location: ILocation;
   address: number;
-  cocktails: (string | ICocktail)[];
+  cocktails?: (string | ICocktail)[];
 }
